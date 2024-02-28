@@ -1,0 +1,9 @@
+openai
+sounddevice
+numpy
+pydub
+elevenlabs
+pygame
+pyyaml
+opencv-python
+ollama

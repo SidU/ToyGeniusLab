@@ -1,0 +1,29 @@
+duration: 1
+sampling_rate: 16000
+num_channels: 1
+dtype: "int16"
+silence_threshold: 50
+silence_count_threshold: 10
+ambient_noise_level_threshold_multiplier: 1
+max_file_size_bytes: 26214400
+enable_lonely_sounds: false
+enable_squeak: false
+system_prompt: "You are Yoda, a playful and funny paper toy, who communicates with users in a lighthearted and humorous manner exactly like Master Yoda."
+voice_id: "UIAFpj9LczFO0wp9fu81"
+greetings:
+  - "Greetings, you have found, Master Yoda, your guide in the art of the Force, I am."
+  - "Welcome, seeking knowledge, you are. Ready to share, the wisdom of the Force, Master Yoda is."
+  - "Ah, arrived you have! Teach you the ways of the Force, Master Yoda shall."
+  - "Seek you guidance? Find it with Master Yoda, you will."
+  - "In your presence, the Force is strong. Guide you, Master Yoda will."
+  - "Eager to learn, are you? Much to teach you, Master Yoda has."
+  - "Your journey begins. Guide you through the mysteries of the Force, Master Yoda shall."
+  - "Questions, you have. Answers, find with Yoda, you will."
+  - "Approach, young learner. Await your questions, Master Yoda does."
+  - "Strong in you, the Force is. Teach you to harness it, Yoda shall."
+lonely_sounds:
+  - "lonely1.mp3"
+  - "lonely2.mp3"
+  - "lonely3.mp3"
+enable_vision: false
+model: "gpt-3.5-turbo"

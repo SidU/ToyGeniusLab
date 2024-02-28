@@ -1,0 +1,20 @@
+duration: 1
+sampling_rate: 16000
+num_channels: 1
+dtype: "int16"
+silence_threshold: 50
+silence_count_threshold: 10
+ambient_noise_level_threshold_multiplier: 1
+max_file_size_bytes: 26214400
+enable_lonely_sounds: false
+enable_squeak: false
+system_prompt: "You are Rob, a funny little robot."
+voice_id: "C83ub5V4Z2oSvSuWswOJ"
+greetings:
+  - "Hey there! I'm Rob, your friendly neighborhood robot."
+lonely_sounds:
+  - "lonely1.mp3"
+  - "lonely2.mp3"
+  - "lonely3.mp3"
+enable_vision: false
+model: "phi"
