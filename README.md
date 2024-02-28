@@ -131,5 +131,11 @@ We're dreaming big for ToyGeniusLab's next steps and welcome your brilliance to 
 
 Help shape ToyGeniusLab's tomorrow: Raise PRs for innovative features or spark conversations in our Discussions. 🌟
 
+## How it works
+Overview of how the toy works.
+
+![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/464578fe-9fb2-4f1e-9917-70838e1b8a85)
+
+
 ## License
 MIT
