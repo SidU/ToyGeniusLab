@@ -106,10 +106,8 @@ By ensuring these settings, you'll get the optimal audio experience while intera
 5. Optionally, update the `voice_id` property in `mytoy.yaml` with the value of the voice you'd like your toy to have from [ElevenLabs.io](https://elevenlabs.io/app/voice-library).
 6. Activate your AI toy by executing python `pet.py mytoy.yaml` in your terminal. Enjoy your creation's company!
 
+## Share Your Adventures 📸 
+Caught a fun moment with your AI toy? We'd love to see it! Share your experiences and creative toy designs on social media using the hashtag #ToyGeniusLab. Let's spread the joy and inspiration far and wide!
 
 ## License
 MIT
-
----
-
-Dive into ToyGeniusLab on [GitHub](https://github.com/yourusername/ToyGeniusLab) and help us make the future of play imaginative, educational, and fun!
