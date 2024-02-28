@@ -109,5 +109,8 @@ By ensuring these settings, you'll get the optimal audio experience while intera
 ## Share Your Adventures 📸 
 Caught a fun moment with your AI toy? We'd love to see it! Share your experiences and creative toy designs on social media using the hashtag #ToyGeniusLab. Let's spread the joy and inspiration far and wide!
 
+## Stay Updated with ToyGeniusLab
+Love ToyGeniusLab? Give us a ⭐ on GitHub to stay connected and receive updates on new features, enhancements, and community contributions. Your support helps us grow and inspire more creative minds!
+
 ## License
 MIT
