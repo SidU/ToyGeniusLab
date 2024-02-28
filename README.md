@@ -102,7 +102,7 @@ By ensuring these settings, you'll get the optimal audio experience while intera
 
 
 ## Crafting Your Custom AI Toy
-1. Begin with downloading the [blank template](https://cubeecraft-production.s3.us-east-2.amazonaws.com/public/about_downloads_cubeecraft_template.pdf.zip). You can digitally color it or use markers and crayons for a hands-on approach.
+1. Begin with downloading the [blank template](https://cubeecraft-production.s3.us-east-2.amazonaws.com/public/about_downloads_cubeecraft_template.pdf.zip). You can digitally color it or use markers and crayons for a hands-on approach. You can also grab a slightly edited version of it [from our repo here](blank_template.png) (has a blank face for more creative options).
 2. Insert a Bluetooth speaker/microphone into your custom-designed toy, ensuring it's paired with your computer first.
 3. Make a copy of an existing toy's config by running `cp mario.yaml mytoy.yaml`.
 4. Update the `system_prompt` property in `mytoy.yaml` according to the personality you want your toy to have.
