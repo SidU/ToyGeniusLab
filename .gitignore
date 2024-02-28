@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 view.jpeg
 audio.mp3
+.DS_Store
