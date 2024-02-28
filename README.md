@@ -115,5 +115,21 @@ Caught a fun moment with your AI toy? We'd love to see it! Share your experience
 ## Stay Updated with ToyGeniusLab
 Love ToyGeniusLab? Give us a ⭐ on GitHub to stay connected and receive updates on new features, enhancements, and community contributions. Your support helps us grow and inspire more creative minds!
 
+## Future Horizons 🌈
+We're dreaming big for ToyGeniusLab's next steps and welcome your brilliance to bring these ideas to life. Here's what's on our horizon:
+
+* More pets
+* Solid local E2E execution: local LLM, local transcription, local TTS
+* Local fast transcription and TTS
+* SD based generation of custom pets
+* Latency improvements
+* Interruption handling
+* Vision reasoning, with local VLLM support
+* Servos for movement
+* 3D printable characters
+* “Pet in a box” (Raspberry-Pi)
+
+Help shape ToyGeniusLab's tomorrow: Raise PRs for innovative features or spark conversations in our Discussions. 🌟
+
 ## License
 MIT
