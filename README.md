@@ -1,20 +1,18 @@
-🎃 MouseGPT: A Halloween Toy Mouse Powered by AI 🐭
+
+# 🌈 ToyGeniusLab: Unleash Kids' Creativity with AI Toys 🚀
 
 ## Introduction
+ToyGeniusLab invites kids into a world where they can create and personalize AI-powered toys. By blending technology with imaginative play, we not only empower young minds to explore their creativity but also help them become comfortable with harnessing AI, fostering tech skills in a fun and interactive way.
 
-MouseGPT is a spook-tacular Halloween toy mouse that talks to trick-or-treaters. Leveraging GPT-3.5 Turbo and ElevenLabs, the mouse offers a unique conversational experience, packed with humor and wit.
+![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/ff22c5e9-ba1c-4f59-9c65-897e06419352)
 
-![mousegpt_cover](https://github.com/SidU/mousegpt/assets/4107912/84985806-d443-4801-af23-4b3c6bff49d1)
-
-[Watch ChatGPT vs MouseGPT demo](https://www.youtube.com/watch?v=aFIaXpRkP18)
-Gets really fun around 2:48 timestamp into the video 🎃
 
 ## Features
+- **🎨 Customizable AI Toys:** Kids design their toy's personality and interactions.
+- **📚 Educational:** A hands-on introduction to AI, programming, and technology.
+- **💡 Open-Source:** A call to the community for ongoing enhancement of software and 3D-printed parts.
+- **🤖 Future Enhancements:** Plans to add servos, displays, and more for a truly lifelike toy experience.
 
-- 🗨️ Conversational AI using OpenAI's GPT-3.5 Turbo
-- 🎤 Real-time audio recording and playback
-- 🐭 Quirky character: a funny, sarcastic mouse trapped in a Halloween box
-- 🌐 Easy-to-run Python script
 
 ## Installation and Setup
 
@@ -22,11 +20,12 @@ Gets really fun around 2:48 timestamp into the video 🎃
 
 - Python 3.x
 - OpenAI API key
+- Eleven Labs API key
 
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/HauntedMouseGPT.git
+git clone https://github.com/sidu/toygeniuslab.git
 ```
 
 ### Install Requirements
@@ -76,7 +75,7 @@ Now you're ready to run the project with both API keys set up.
 
 ### Connecting Bluetooth Microphone and Speaker
 
-Before running the project, make sure you have a portable Bluetooth microphone and speaker connected to your computer. Ensure that they are selected as the default input and output devices.
+Before running the project, make sure you have a portable Bluetooth microphone and speaker connected to your computer. Ensure that they are selected as the default input and output devices. For best experience, we recommend purchasing a mini bluetooth speaker/mic combo, like [LEICEX Mini Speaker from Amazon](https://www.amazon.com/LEICEX-Bluetooth-Portable-Wireless-Speakers/dp/B0BPNYY61M/) (costs ~$10).
 
 #### Steps to Connect
 
@@ -94,38 +93,43 @@ Before running the project, make sure you have a portable Bluetooth microphone a
 
 By ensuring these settings, you'll get the optimal audio experience while interacting with the project.
 
-## How to Use
+## Bringing Your Mario AI Toy to Life
+1. Download and print the [Mario template](https://www.cubeecraft.com/cubees/new-mario).
+2. After pairing a Bluetooth speaker/microphone with your computer, insert it into the paper toy.
+3. Execute the AI toy program by running python `pet.py mario.yaml` in your terminal. Get ready for interactive fun!
 
-1. Run `pet.py`.
-    ```bash
-    python pet.py
-    ```
-2. Place the hardware setup near your Halloween decorations.
-3. Enjoy the quirky conversations your haunted mouse has with trick-or-treaters!
-
-## Configuration
-
-Edit the `pet.py` file to configure system parameters such as recording duration, silence threshold, and so on.
-
-## Spook away!
-<img width="519" alt="image" src="https://github.com/SidU/mousegpt/assets/4107912/820e8273-891a-4bcd-b835-53e946e1e067">
+![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/b37b084e-22e5-4c55-800e-9c57f1b6305a)
 
 
-## Credits
+## Crafting Your Custom AI Toy
+1. Begin with downloading the [blank template](https://cubeecraft-production.s3.us-east-2.amazonaws.com/public/about_downloads_cubeecraft_template.pdf.zip). You can digitally color it or use markers and crayons for a hands-on approach.
+2. Insert a Bluetooth speaker/microphone into your custom-designed toy, ensuring it's paired with your computer first.
+3. Make a copy of an existing toy's config by running `cp mario.yaml mytoy.yaml`.
+4. Update the `system_prompt` property in `mytoy.yaml` according to the personality you want your toy to have.
+5. Optionally, update the `voice_id` property in `mytoy.yaml` with the value of the voice you'd like your toy to have from [ElevenLabs.io](https://elevenlabs.io/app/voice-library).
+6. Activate your AI toy by executing python `pet.py mytoy.yaml` in your terminal. Enjoy your creation's company!
 
-This project uses the following libraries:
+## Share Your Adventures 📸 
+Caught a fun moment with your AI toy? We'd love to see it! Share your experiences and creative toy designs on social media using the hashtag #ToyGeniusLab. Let's spread the joy and inspiration far and wide!
 
-- OpenAI
-- ElevenLabs
-- sounddevice
-- pydub
-- numpy
-- Mouse squeak sound-effect from [FreeSoundsLibrary](https://www.freesoundslibrary.com/mouse-squeaking-noise)
+## Stay Updated with ToyGeniusLab
+Love ToyGeniusLab? Give us a ⭐ on GitHub to stay connected and receive updates on new features, enhancements, and community contributions. Your support helps us grow and inspire more creative minds!
+
+## Future Horizons 🌈
+We're dreaming big for ToyGeniusLab's next steps and welcome your brilliance to bring these ideas to life. Here's what's on our horizon:
+
+* More pets
+* Solid local E2E execution: local LLM, local transcription, local TTS
+* Local fast transcription and TTS
+* SD based generation of custom pets
+* Latency improvements
+* Interruption handling
+* Vision reasoning, with local VLLM support
+* Servos for movement
+* 3D printable characters
+* “Pet in a box” (Raspberry-Pi)
+
+Help shape ToyGeniusLab's tomorrow: Raise PRs for innovative features or spark conversations in our Discussions. 🌟
 
 ## License
-
 MIT
-
----
-
-For any questions or suggestions, feel free to open an issue or a pull request. Happy Haunting! 🎃👻
