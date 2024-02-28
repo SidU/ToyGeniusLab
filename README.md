@@ -4,6 +4,9 @@
 ## Introduction
 ToyGeniusLab invites kids into a world where they can create and personalize AI-powered toys. By blending technology with imaginative play, we not only empower young minds to explore their creativity but also help them become comfortable with harnessing AI, fostering tech skills in a fun and interactive way.
 
+![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/ff22c5e9-ba1c-4f59-9c65-897e06419352)
+
+
 ## Features
 - **🎨 Customizable AI Toys:** Kids design their toy's personality and interactions.
 - **📚 Educational:** A hands-on introduction to AI, programming, and technology.
