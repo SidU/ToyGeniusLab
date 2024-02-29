@@ -6,6 +6,7 @@ ToyGeniusLab invites kids into a world where they can create and personalize AI-
 
 ![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/ff22c5e9-ba1c-4f59-9c65-897e06419352)
 
+[View Demo](https://www.youtube.com/shorts/VtCAA2GemKI)
 
 ## Features
 - **🎨 Customizable AI Toys:** Kids design their toy's personality and interactions.
