@@ -16,6 +16,7 @@ import concurrent.futures
 import sys
 from queue import Queue
 import ollama
+from groq import Groq
 
 # Get your OpenAI API Key from the environment variable
 api_key = os.environ.get("OPENAI_API_KEY")
@@ -51,6 +52,7 @@ silence_count_threshold = settings['silence_count_threshold']
 model = settings['model']
 
 client = OpenAI()
+groqClient = Groq()
 
 # Initialize messages
 messages = [
@@ -102,6 +104,17 @@ def get_pet_reply(user_input):
             temperature=1,
         )
         return response.choices[0].message.content
+    
+    elif model.startswith("groq"):
+        # Remove "grok-" from the model name
+        model_name = model[5:]
+        response = groqClient.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=1,
+        )
+        return response.choices[0].message.content
+
     else: # Use ollama local deployment
         print(f"Using Ollama model: {model}")
         response = ollama.chat(model=model, messages=messages)

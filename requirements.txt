@@ -7,3 +7,4 @@ pygame
 pyyaml
 opencv-python
 ollama
+groq
