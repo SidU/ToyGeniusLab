@@ -346,68 +346,6 @@ def capture_webcam_as_base64():
     jpg_as_text = base64.b64encode(buffer).decode('utf-8')
     return jpg_as_text
 
-def get_image_description(base64_image):
-    messages = [
-    {
-        "role": "system",
-        "content": [
-                {"type": "text", "text": "You are a pet animal."},
-        ]
-    },
-    {
-        "role": "user",
-        "content": [
-            {"type": "text", "text": "Imagine you are a pet observing this scene. Describe what you see from your perspective. Focus on the humans, objects, and the environment around you. How do these elements appear and interact from your viewpoint as a pet?"},
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{base64_image}",
-                },
-            },
-        ],
-    }
-    ]
-
-    payload = {
-        "model": "gpt-4-vision-preview",
-        "messages": messages,
-        "max_tokens": 300,
-    }
-
-    # Make the API call to GPT-4 Vision Model
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-    }
-
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-
-    # Extract the content from the GPT-4 Vision Model's response
-    vision_response = response.json()
-    vision_content = vision_response['choices'][0]['message']['content']
-
-    return vision_content
-
-def get_pet_view():
-    # Capture image from webcam
-    image = capture_webcam_as_base64()
-
-    # Get image description from OpenAI API
-    image_description = get_image_description(image)
-
-    return image_description
-
-def update_vision(view_description):
-    # Update system prompt by adding suffix, "; Pet's current view: {view_description}"
-  
-    print(f"Updating vision: {view_description}")
-    global system_prompt
-    system_prompt = settings['system_prompt'] + f"; You currently see: {view_description}"
-
-    # Update the first message in the messages list
-    global messages
-    messages[0]["content"] = system_prompt
-
 def main():
     global talking, messages, stop_recording
 
