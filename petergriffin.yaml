@@ -26,4 +26,4 @@ lonely_sounds:
   - "lonely2.mp3"
   - "lonely3.mp3"
 enable_vision: false
-model: "gpt-3.5-turbo"
+model: "gpt-40-mini"

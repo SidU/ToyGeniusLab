@@ -74,6 +74,11 @@ Before running the project, you'll need to set up two essential environment vari
 
 Now you're ready to run the project with both API keys set up.
 
+### Running a pet
+```bash
+python pet.py petergriffin.yaml
+```
+
 ### Connecting Bluetooth Microphone and Speaker
 
 Before running the project, make sure you have a portable Bluetooth microphone and speaker connected to your computer. Ensure that they are selected as the default input and output devices. For best experience, we recommend purchasing a mini bluetooth speaker/mic combo, like [LEICEX Mini Speaker from Amazon](https://www.amazon.com/LEICEX-Bluetooth-Portable-Wireless-Speakers/dp/B0BPNYY61M/) (costs ~$10).

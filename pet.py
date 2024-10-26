@@ -6,7 +6,8 @@ import pygame
 import threading
 import random
 from pydub import AudioSegment
-from elevenlabs import generate, stream
+from elevenlabs.client import ElevenLabs
+from elevenlabs import stream
 import yaml
 import cv2
 import base64
@@ -17,6 +18,10 @@ import sys
 from queue import Queue
 import ollama
 from groq import Groq
+
+eleven_client = ElevenLabs(
+    api_key=os.environ.get("ELEVEN_API_KEY")
+)
 
 # Get your OpenAI API Key from the environment variable
 api_key = os.environ.get("OPENAI_API_KEY")
@@ -51,8 +56,13 @@ enable_vision = settings['enable_vision']
 silence_count_threshold = settings['silence_count_threshold']
 model = settings['model']
 
-client = OpenAI()
-groqClient = Groq()
+# Initialize the client based on the model
+if model.startswith("gpt"):
+    client = OpenAI()
+elif model.startswith("groq"):
+    groqClient = Groq()
+else:
+    ollama_client = ollama.Client()
 
 # Initialize messages
 messages = [
@@ -130,7 +140,7 @@ def say(text):
         pygame.mixer.music.stop()
 
     # Generate audio stream for the assistant's reply
-    audio_stream = generate(
+    audio_stream = eleven_client.generate(
         voice=voice_id,
         text=text,
         model="eleven_turbo_v2",
@@ -271,18 +281,30 @@ def listen_audio_until_silence():
     first_sound_detected = False
     total_frames = 0
 
-    # Start recording audio
-    with sd.InputStream(callback=audio_callback, samplerate=sampling_rate, channels=num_channels, dtype=dtype):
-        while not stop_recording:
-            sd.sleep(250)  # Sleep for a short time to prevent busy waiting (gap between pause and processing?)
+    # Print available devices
+    print("Available devices:")
+    print(sd.query_devices())
 
-    print("Recording stopped.")
+    try:
+        # Start recording audio
+        with sd.InputStream(callback=audio_callback, samplerate=sampling_rate, channels=num_channels, dtype=dtype):
+            while not stop_recording:
+                sd.sleep(250)  # Sleep for a short time to prevent busy waiting
 
-    # Process audio data from the queue
-    audio_data = process_audio_from_queue()
+        print("Recording stopped.")
 
-    return audio_data
+        # Process audio data from the queue
+        audio_data = process_audio_from_queue()
 
+        return audio_data
+
+    except sd.PortAudioError as e:
+        print(f"PortAudio error: {e}")
+        print(f"Current audio settings:")
+        print(f"Sampling rate: {sampling_rate}")
+        print(f"Channels: {num_channels}")
+        print(f"Dtype: {dtype}")
+        return None
 
 def capture_webcam_as_base64():
 
