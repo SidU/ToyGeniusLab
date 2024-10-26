@@ -100,16 +100,32 @@ def calculate_ambient_noise_level(duration=5):
 
     return ambient_noise_level
 
-def get_pet_reply(user_input):
+def get_pet_reply(user_input, base64_image=None):
     global messages
     
-    # Now get ready to generate the assistant's reply
-    messages.append({"role": "user", "content": user_input})
+    # Prepare the user message
+    if enable_vision and base64_image:
+        user_message = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": user_input},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}"
+                    }
+                }
+            ]
+        }
+    else:
+        user_message = {"role": "user", "content": user_input}
+    
+    messages.append(user_message)
     
     # If model starts with "gpt" then use the chat endpoint from OpenAI
     if model.startswith("gpt"):
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=messages,
             temperature=1,
         )
@@ -129,7 +145,6 @@ def get_pet_reply(user_input):
         print(f"Using Ollama model: {model}")
         response = ollama.chat(model=model, messages=messages)
         return response['message']['content']
-    
 
 def say(text):
 
@@ -394,7 +409,6 @@ def update_vision(view_description):
     messages[0]["content"] = system_prompt
 
 def main():
-
     global talking, messages, stop_recording
 
     initialize()
@@ -412,26 +426,18 @@ def main():
 
         # Use ThreadPoolExecutor to run tasks in parallel
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            # Start the operations and mark each future with its operation
-
-            if enable_vision:
-                future_pet_view = executor.submit(get_pet_view)
-
             future_user_input = executor.submit(get_user_input_from_audio, audio_data)
-
-            # Wait for both tasks to complete
+            
             if enable_vision:
-                view_description = future_pet_view.result()
+                future_pet_view = executor.submit(capture_webcam_as_base64)
 
+            # Wait for tasks to complete
             user_input = future_user_input.result()
-
-        # Update view with pet vision
-        if enable_vision:
-            update_vision(view_description)
+            base64_image = future_pet_view.result() if enable_vision else None
 
         print(f"User: {user_input}")
 
-        pet_reply = get_pet_reply(user_input)
+        pet_reply = get_pet_reply(user_input, base64_image)
         print(f"Pet: {pet_reply}")
 
         # convert to lowercase and check if string is "ignore"
