@@ -18,6 +18,7 @@ import sys
 from queue import Queue
 import ollama
 from groq import Groq
+from io import BytesIO
 
 eleven_client = ElevenLabs(
     api_key=os.environ.get("ELEVEN_API_KEY")
@@ -147,7 +148,6 @@ def get_pet_reply(user_input, base64_image=None):
         return response['message']['content']
 
 def say(text):
-
     global messages
 
     if enable_squeak:
@@ -162,8 +162,29 @@ def say(text):
         stream=True
     )
 
+    # Create a BytesIO object to hold audio data
+    audio_buffer = BytesIO()
+
     # Stream the generated audio
-    stream(audio_stream)
+    for chunk in audio_stream:
+        if chunk:
+            audio_buffer.write(chunk)
+
+    # Reset buffer position to the beginning
+    audio_buffer.seek(0)
+
+    # Save the audio buffer to an MP3 file
+    output_filename = f"pet_response.mp3"
+    with open(output_filename, "wb") as f:
+        f.write(audio_buffer.getvalue())
+
+    print(f"Saved audio response to {output_filename}")
+
+    # Reset buffer position again for streaming
+    audio_buffer.seek(0)
+
+    # Stream the audio using the original method
+    stream(audio_buffer)
 
     messages.append({"role": "assistant", "content": text})
 
