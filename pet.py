@@ -19,6 +19,10 @@ from queue import Queue
 import ollama
 from groq import Groq
 from io import BytesIO
+from pydub.playback import play
+import queue
+from scipy.io import wavfile
+import time
 
 eleven_client = ElevenLabs(
     api_key=os.environ.get("ELEVEN_API_KEY")
@@ -174,17 +178,14 @@ def say(text):
     audio_buffer.seek(0)
 
     # Save the audio buffer to an MP3 file
-    output_filename = f"pet_response.mp3"
+    output_filename = "pet_response.mp3"
     with open(output_filename, "wb") as f:
         f.write(audio_buffer.getvalue())
 
     print(f"Saved audio response to {output_filename}")
 
-    # Reset buffer position again for streaming
-    audio_buffer.seek(0)
-
-    # Stream the audio using the original method
-    stream(audio_buffer)
+    # Display the talking pet while playing the audio
+    display_talking_pet(output_filename)
 
     messages.append({"role": "assistant", "content": text})
 
@@ -231,7 +232,7 @@ def get_user_input_from_audio(audio_data):
         return user_input
 
 def initialize():
-    global silence_threshold
+    global silence_threshold, screen, skull_closed, skull_open, pygame_initialized
 
      # Calculate the ambient noise level and set it as the silence threshold
     ambient_noise_level = calculate_ambient_noise_level()
@@ -253,6 +254,139 @@ def initialize():
 
     if enable_squeak:
         pygame.mixer.music.load("filler.mp3")
+
+    # Initialize Pygame
+    pygame.init()
+    screen = pygame.display.set_mode((800, 600))
+    pygame.display.set_caption("Talking Pet")
+    pygame_initialized = True
+
+    # Load skull images
+    skull_closed = pygame.image.load(settings['character_closed_mouth'])
+    skull_open = pygame.image.load(settings['character_open_mouth'])
+    
+    # Print image sizes for debugging
+    print(f"Closed mouth image size: {skull_closed.get_size()}")
+    print(f"Open mouth image size: {skull_open.get_size()}")
+
+def analyze_audio_chunk(audio_chunk):
+    samples = np.array(audio_chunk.get_array_of_samples())
+    if len(samples) == 0:
+        return False
+    rms = np.sqrt(np.mean(samples.astype(float)**2))
+    mouth_open = rms > 50  # Lowered threshold, adjust as needed
+    print(f"RMS: {rms:.2f}, Mouth open: {mouth_open}")  # Debug print
+    return mouth_open
+
+def analyze_audio_file(audio_file):
+    # Convert mp3 to wav
+    audio = AudioSegment.from_mp3(audio_file)
+    audio.export("temp.wav", format="wav")
+    
+    # Read the wav file
+    sample_rate, audio_data = wavfile.read("temp.wav")
+    
+    # If stereo, convert to mono
+    if len(audio_data.shape) == 2:
+        audio_data = audio_data.mean(axis=1)
+    
+    # Normalize the audio data
+    audio_data = audio_data / np.max(np.abs(audio_data))
+    
+    # Calculate energy
+    frame_length = int(sample_rate * 0.03)  # 30ms frames
+    energy = []
+    for i in range(0, len(audio_data), frame_length):
+        frame = audio_data[i:i+frame_length]
+        energy.append(np.sum(frame**2))
+    
+    # Normalize energy
+    energy = np.array(energy)
+    energy = energy / np.max(energy)
+    
+    return energy, len(audio_data) / sample_rate
+
+def play_and_analyze_audio(audio_file, mouth_queue):
+    energy, duration = analyze_audio_file(audio_file)
+    
+    # Play the audio file
+    pygame.mixer.init()
+    pygame.mixer.music.load(audio_file)
+    pygame.mixer.music.play()
+    
+    # Send mouth states to the queue
+    start_time = time.time()
+    for e in energy:
+        mouth_open = e > 0.1  # Adjust this threshold as needed
+        mouth_queue.put(mouth_open)
+        time.sleep(0.03)  # 30ms per frame
+        
+        # Check if we've reached the end of the audio
+        if time.time() - start_time > duration:
+            break
+    
+    # Signal end of audio
+    mouth_queue.put(None)
+
+def display_talking_pet(audio_file):
+    global pygame_initialized
+    mouth_queue = queue.Queue()
+
+    # Start playing audio and analyzing in a separate thread
+    audio_thread = threading.Thread(target=play_and_analyze_audio, args=(audio_file, mouth_queue))
+    audio_thread.start()
+
+    running = True
+    mouth_open = False
+    frame_count = 0
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                pygame_initialized = False
+
+        # Set background to black
+        screen.fill((0, 0, 0))
+
+        # Update mouth state from the queue
+        try:
+            mouth_state = mouth_queue.get_nowait()
+            if mouth_state is None:
+                mouth_open = False  # Close mouth when audio ends
+                running = False  # Stop the loop when we receive the end signal
+            else:
+                mouth_open = mouth_state
+        except queue.Empty:
+            pass  # No new mouth state, keep the current state
+
+        # Get the appropriate skull image
+        skull_image = skull_open if mouth_open else skull_closed
+
+        # Resize image to fit within the viewport
+        skull_image = pygame.transform.scale(skull_image, (min(800, skull_image.get_width()), min(600, skull_image.get_height())))
+        skull_rect = skull_image.get_rect(center=(400, 300))
+        screen.blit(skull_image, skull_rect)
+
+        pygame.display.update()
+
+        frame_count += 1
+        if frame_count % 10 == 0:  # Print debug info every 10 frames
+            print(f"Frame {frame_count}, Mouth open: {mouth_open}")
+
+    # Ensure the mouth is closed at the end
+    screen.fill((0, 0, 0))
+    skull_image = pygame.transform.scale(skull_closed, (min(800, skull_closed.get_width()), min(600, skull_closed.get_height())))
+    skull_rect = skull_image.get_rect(center=(400, 300))
+    screen.blit(skull_image, skull_rect)
+    pygame.display.update()
+
+    # Wait for the audio thread to finish
+    audio_thread.join()
+    pygame.mixer.music.stop()
+
+    # Keep the closed mouth image displayed for a short time
+    pygame.time.wait(500)  # Wait for 500 ms
 
 # Global list to accumulate audio data
 audio_queue = Queue()
@@ -368,7 +502,7 @@ def capture_webcam_as_base64():
     return jpg_as_text
 
 def main():
-    global talking, messages, stop_recording
+    global talking, messages, stop_recording, pygame_initialized
 
     initialize()
 
@@ -377,7 +511,7 @@ def main():
     print("Listening...")
 
     # Main loop
-    while True:
+    while pygame_initialized:
         talking = False  # We start off quiet
 
         # Listen for audio until we detect silence
@@ -403,9 +537,11 @@ def main():
         if pet_reply.lower() == "ignore":
             print("Ignoring conversation...")
             messages = messages[:-1]
+        else:
+            # Speak the assistant's reply
+            say(pet_reply)
 
-        # Speak the assistant's reply
-        say(pet_reply)
+    pygame.quit()
 
 if __name__ == "__main__":
     main()

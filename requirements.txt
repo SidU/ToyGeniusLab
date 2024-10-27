@@ -8,3 +8,4 @@ pyyaml
 opencv-python
 ollama
 groq
+scipy
