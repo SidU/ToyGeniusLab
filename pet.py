@@ -328,6 +328,19 @@ def play_and_analyze_audio(audio_file, mouth_queue):
     # Signal end of audio
     mouth_queue.put(None)
 
+def resize_image(image, window_size):
+    """Resize image to fit the window while maintaining aspect ratio."""
+    img_w, img_h = image.get_size()
+    win_w, win_h = window_size
+    aspect_ratio = img_w / img_h
+    if win_w / win_h > aspect_ratio:
+        new_h = win_h
+        new_w = int(new_h * aspect_ratio)
+    else:
+        new_w = win_w
+        new_h = int(new_w / aspect_ratio)
+    return pygame.transform.smoothscale(image, (new_w, new_h))
+
 def display_talking_pet(audio_file):
     global pygame_initialized
     mouth_queue = queue.Queue()
@@ -339,12 +352,26 @@ def display_talking_pet(audio_file):
     running = True
     mouth_open = False
     frame_count = 0
+    fullscreen = False
+
+    # Set the initial window size
+    screen = pygame.display.set_mode((1024, 1024), pygame.RESIZABLE)
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 pygame_initialized = False
+            elif event.type == pygame.VIDEORESIZE:
+                if not fullscreen:
+                    screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_f:  # Press 'f' to toggle fullscreen
+                    fullscreen = not fullscreen
+                    if fullscreen:
+                        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                    else:
+                        screen = pygame.display.set_mode((1024, 1024), pygame.RESIZABLE)
 
         # Set background to black
         screen.fill((0, 0, 0))
@@ -363,10 +390,15 @@ def display_talking_pet(audio_file):
         # Get the appropriate skull image
         skull_image = skull_open if mouth_open else skull_closed
 
-        # Resize image to fit within the viewport
-        skull_image = pygame.transform.scale(skull_image, (min(800, skull_image.get_width()), min(600, skull_image.get_height())))
-        skull_rect = skull_image.get_rect(center=(400, 300))
-        screen.blit(skull_image, skull_rect)
+        # Resize the image to fit the current window size
+        resized_image = resize_image(skull_image, screen.get_size())
+        
+        # Calculate position to center the image
+        pos_x = (screen.get_width() - resized_image.get_width()) // 2
+        pos_y = (screen.get_height() - resized_image.get_height()) // 2
+
+        # Blit the resized image
+        screen.blit(resized_image, (pos_x, pos_y))
 
         pygame.display.update()
 
@@ -376,9 +408,10 @@ def display_talking_pet(audio_file):
 
     # Ensure the mouth is closed at the end
     screen.fill((0, 0, 0))
-    skull_image = pygame.transform.scale(skull_closed, (min(800, skull_closed.get_width()), min(600, skull_closed.get_height())))
-    skull_rect = skull_image.get_rect(center=(400, 300))
-    screen.blit(skull_image, skull_rect)
+    resized_closed = resize_image(skull_closed, screen.get_size())
+    pos_x = (screen.get_width() - resized_closed.get_width()) // 2
+    pos_y = (screen.get_height() - resized_closed.get_height()) // 2
+    screen.blit(resized_closed, (pos_x, pos_y))
     pygame.display.update()
 
     # Wait for the audio thread to finish
