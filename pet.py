@@ -390,12 +390,23 @@ def display_talking_pet(audio_file):
         # Get the appropriate skull image
         skull_image = skull_open if mouth_open else skull_closed
 
-        # Resize the image to fit the current window size
-        resized_image = resize_image(skull_image, screen.get_size())
-        
+        # Get the current window size
+        window_width, window_height = screen.get_size()
+
+        # Calculate the scaling factor to fit the image in the window
+        image_width, image_height = skull_image.get_size()
+        scale = min(window_width / image_width, window_height / image_height)
+
+        # Calculate the new image size
+        new_width = int(image_width * scale)
+        new_height = int(image_height * scale)
+
+        # Resize the image
+        resized_image = pygame.transform.smoothscale(skull_image, (new_width, new_height))
+
         # Calculate position to center the image
-        pos_x = (screen.get_width() - resized_image.get_width()) // 2
-        pos_y = (screen.get_height() - resized_image.get_height()) // 2
+        pos_x = (window_width - new_width) // 2
+        pos_y = (window_height - new_height) // 2
 
         # Blit the resized image
         screen.blit(resized_image, (pos_x, pos_y))
@@ -403,15 +414,21 @@ def display_talking_pet(audio_file):
         pygame.display.update()
 
         frame_count += 1
-        if frame_count % 10 == 0:  # Print debug info every 10 frames
-            print(f"Frame {frame_count}, Mouth open: {mouth_open}")
-
+        
     # Ensure the mouth is closed at the end
     screen.fill((0, 0, 0))
-    resized_closed = resize_image(skull_closed, screen.get_size())
-    pos_x = (screen.get_width() - resized_closed.get_width()) // 2
-    pos_y = (screen.get_height() - resized_closed.get_height()) // 2
+    
+    # Resize and center the closed mouth image
+    image_width, image_height = skull_closed.get_size()
+    window_width, window_height = screen.get_size()
+    scale = min(window_width / image_width, window_height / image_height)
+    new_width = int(image_width * scale)
+    new_height = int(image_height * scale)
+    resized_closed = pygame.transform.smoothscale(skull_closed, (new_width, new_height))
+    pos_x = (window_width - new_width) // 2
+    pos_y = (window_height - new_height) // 2
     screen.blit(resized_closed, (pos_x, pos_y))
+    
     pygame.display.update()
 
     # Wait for the audio thread to finish
