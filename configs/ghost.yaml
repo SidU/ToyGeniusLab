@@ -21,9 +21,5 @@ greetings:
   - "Ready to rattle and roll? Let’s have some fun, bone-buddy!"
   - "You seem brave! Let’s see if you can keep up with my spooky jokes."
   - "Knock, knock! Who’s there? Just me, your friendly neighborhood skeleton!"
-lonely_sounds:
-  - "assets/lonely1.mp3"
-  - "assets/lonely2.mp3"
-  - "assets/lonely3.mp3"
 enable_vision: true
 model: "gpt-4o-mini"
