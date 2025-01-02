@@ -52,7 +52,7 @@ export OPENAI_API_KEY="your-api-key-here"
 export ELEVEN_API_KEY="your-eleven-api-key-here"
 ```
 
-### Running a Pet
+### Running a Character
 
 The easiest way to get started is using the example application:
 
@@ -135,20 +135,20 @@ Overview of how the toy works.
 
 ![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/464578fe-9fb2-4f1e-9917-70838e1b8a85)
 
-## Using TalkingPet in Your Projects
+## Using AICharacter in Your Projects
 
-Want to create your own AI pet application? The `TalkingPet` class provides a simple way to create your own AI-powered interactive toys. Here's a basic example:
+Want to create your own AI character application? The `AICharacter` class provides a simple way to create interactive AI-powered characters. Here's a basic example:
 
 ```python
-from pet import TalkingPet
+from ai_character import AICharacter
 
-class PetApplication:
+class CharacterApplication:
     def __init__(self, config_path):
-        # Initialize pet with configuration
-        self.pet = TalkingPet(config=self.load_config(config_path))
+        # Initialize character with configuration
+        self.character = AICharacter(config=self.load_config(config_path))
         
         # Add callback for speaking state changes
-        self.pet.add_speaking_callback(self.speaking_state_changed)
+        self.character.add_speaking_callback(self.speaking_state_changed)
         
     def speaking_state_changed(self, is_speaking):
         if is_speaking:
@@ -159,55 +159,55 @@ class PetApplication:
     def run(self):
         while True:
             # Listen for user input
-            user_input = self.pet.listen()
+            user_input = self.character.listen()
             
             # Get AI response
-            response = self.pet.think_response(user_input)
+            response = self.character.think_response(user_input)
             
             # Speak the response
-            self.pet.speak(response)
+            self.character.speak(response)
 ```
 
-### TalkingPet Main APIs
+### AICharacter Main APIs
 
 #### Initialization
 ```python
-pet = TalkingPet(config={
+character = AICharacter(config={
     'sampling_rate': 44100,
     'num_channels': 1,
     'dtype': 'float32',
     'silence_threshold': 0.01,
     'system_prompt': 'Your character prompt here',
     # ... other config options
-})
+}, debug=False)
 ```
 
 #### Core Methods
 - **listen()**: Records audio until silence is detected and returns transcribed text
   ```python
-  user_input = pet.listen()  # Returns transcribed text or None
+  user_input = character.listen()  # Returns transcribed text or None
   ```
 
 - **think_response(user_input)**: Generates AI response based on user input
   ```python
-  response = pet.think_response("Hello!")  # Returns AI-generated response
+  response = character.think_response("Hello!")  # Returns AI-generated response
   ```
 
-- **speak(text)**: Converts text to speech and animates the pet
+- **speak(text)**: Converts text to speech and animates the character (if images provided)
   ```python
-  pet.speak("Hello, I'm your AI pet!")
+  character.speak("Hello, I'm your AI character!")
   ```
 
 #### Speaking State Callbacks
 ```python
 def on_speaking_changed(is_speaking):
-    print("Pet is speaking:" if is_speaking else "Pet finished speaking")
+    print("Character is speaking:" if is_speaking else "Character finished speaking")
 
-pet.add_speaking_callback(on_speaking_changed)
+character.add_speaking_callback(on_speaking_changed)
 ```
 
 #### Other Useful Methods
-- **get_speaking_state()**: Returns whether the pet is currently speaking
+- **get_speaking_state()**: Returns whether the character is currently speaking
 - **cleanup()**: Properly closes resources when done
 
 ### Example Configuration File
@@ -221,11 +221,11 @@ silence_count_threshold: 30
 max_file_size_bytes: 10485760
 enable_lonely_sounds: false
 enable_squeak: false
-system_prompt: "You are a friendly AI pet..."
+system_prompt: "You are a friendly AI character..."
 voice_id: "your-eleven-labs-voice-id"
 model: "gpt-4-vision-preview"
-character_closed_mouth: "assets/closed.png"
-character_open_mouth: "assets/open.png"
+character_closed_mouth: "assets/closed.png"  # Optional: for visual animation
+character_open_mouth: "assets/open.png"      # Optional: for visual animation
 enable_vision: true
 greetings:
   - "Hello!"
