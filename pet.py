@@ -20,8 +20,14 @@ import time
 import queue
 
 class TalkingPet:
-    def __init__(self, config):
-        """Initialize the talking pet with configuration dictionary."""
+    def __init__(self, config, debug=False):
+        """Initialize the talking pet with configuration dictionary.
+        
+        Args:
+            config (dict): Configuration dictionary
+            debug (bool): Enable debug output (default: False)
+        """
+        self.debug = debug
         self.load_config(config)
         self.initialize_components()
         self.is_speaking = False
@@ -31,6 +37,11 @@ class TalkingPet:
         ]
         self.pygame_initialized = True
         self.talking = False
+
+    def _debug_print(self, *args, **kwargs):
+        """Print debug information if debug mode is enabled."""
+        if self.debug:
+            print(*args, **kwargs)
 
     def load_config(self, config):
         """Load configuration from provided dictionary."""
@@ -145,10 +156,10 @@ class TalkingPet:
             
             # Compute the mean amplitude of the audio chunk
             chunk_mean = np.abs(indata).mean()
-            print(f"Chunk mean: {chunk_mean}")  # Debug line
+            self._debug_print(f"Chunk mean: {chunk_mean}")  # Debug line
             
             if chunk_mean > self.silence_threshold:
-                print("Sound detected, adding to audio queue.")
+                self._debug_print("Sound detected, adding to audio queue.")
                 audio_queue.put(indata.copy())
                 total_frames += frames
                 silence_count = 0
@@ -157,7 +168,7 @@ class TalkingPet:
                 silence_count += 1
             
             # Print silence count
-            print(f"Silence count: {silence_count}")
+            self._debug_print(f"Silence count: {silence_count}")
 
             # Stop recording after silence, but ensure minimum duration
             current_duration = total_frames / self.sampling_rate
@@ -165,14 +176,14 @@ class TalkingPet:
                 silence_count >= self.silence_count_threshold and 
                 first_sound_detected):
                 stop_recording = True
-                print("Silence detected, stopping recording.")
+                self._debug_print("Silence detected, stopping recording.")
 
         try:
             # Print available devices
-            print("Available devices:")
-            print(sd.query_devices())
+            self._debug_print("Available devices:")
+            self._debug_print(sd.query_devices())
             
-            print("Listening for audio...")
+            self._debug_print("Listening for audio...")
             with sd.InputStream(
                 callback=audio_callback,
                 samplerate=self.sampling_rate,
@@ -182,10 +193,10 @@ class TalkingPet:
                 while not stop_recording:
                     sd.sleep(250)
 
-            print("Recording stopped.")
+            self._debug_print("Recording stopped.")
 
             # Process audio queue
-            print("Processing audio data...")
+            self._debug_print("Processing audio data...")
             audio_data = np.empty((0, self.num_channels), dtype=self.dtype)
             while not audio_queue.empty():
                 indata = audio_queue.get()
@@ -194,11 +205,11 @@ class TalkingPet:
             return audio_data
 
         except sd.PortAudioError as e:
-            print(f"PortAudio error: {e}")
-            print(f"Current audio settings:")
-            print(f"Sampling rate: {self.sampling_rate}")
-            print(f"Channels: {self.num_channels}")
-            print(f"Dtype: {self.dtype}")
+            self._debug_print(f"PortAudio error: {e}")
+            self._debug_print(f"Current audio settings:")
+            self._debug_print(f"Sampling rate: {self.sampling_rate}")
+            self._debug_print(f"Channels: {self.num_channels}")
+            self._debug_print(f"Dtype: {self.dtype}")
             return None
 
     def _transcribe_audio(self, audio_data):
@@ -328,7 +339,7 @@ class TalkingPet:
 
     def _calculate_ambient_noise_level(self):
         """Calculate the ambient noise level by sampling the environment."""
-        print("Calculating ambient noise level, please wait...")
+        self._debug_print("Calculating ambient noise level, please wait...")
         ambient_noise_data = []
         duration = 5  # seconds
         
@@ -343,7 +354,7 @@ class TalkingPet:
             ambient_noise_data.extend(audio_chunk)
             
         ambient_noise_level = np.abs(np.array(ambient_noise_data)).mean()
-        print(f"Ambient noise level: {ambient_noise_level}")
+        self._debug_print(f"Ambient noise level: {ambient_noise_level}")
         return ambient_noise_level
 
     def _capture_image(self):

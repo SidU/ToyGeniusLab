@@ -19,7 +19,7 @@ class PetApplication:
             )
             
         # Create pet instance
-        self.pet = TalkingPet(config=self.config)
+        self.pet = TalkingPet(config=self.config, debug=True)
         self.pet.add_speaking_callback(self.speaking_state_changed)
         self.running = False
         
