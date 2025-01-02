@@ -57,7 +57,7 @@ export ELEVEN_API_KEY="your-eleven-api-key-here"
 The easiest way to get started is using our example agent implementation:
 
 ```bash
-python example_usage.py --config configs/ghost.yaml
+python character_agent.py --config configs/ghost.yaml
 ```
 
 This creates an interactive agent that:
@@ -152,7 +152,7 @@ The project consists of two main components:
    - LLM integration (GPT-4, Groq, Ollama)
    - Text-to-speech via ElevenLabs
 
-2. **Character Agent (example_usage.py)**
+2. **Character Agent (character_agent.py)**
    - Creates and manages AICharacter instances
    - Implements the interaction loop
    - Handles user feedback
@@ -262,7 +262,7 @@ lonely_sounds:
   - "sound2.mp3"
 ```
 
-See [example_usage.py](example_usage.py) for a complete implementation example.
+See [character_agent.py](character_agent.py) for a complete implementation example.
 
 ## License
 MIT
