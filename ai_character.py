@@ -19,12 +19,12 @@ from scipy.io import wavfile
 import time
 import queue
 
-class TalkingPet:
+class AICharacter:
     def __init__(self, config, debug=False):
-        """Initialize the talking pet with configuration dictionary.
+        """Initialize an AI character with configuration dictionary.
         
         Args:
-            config (dict): Configuration dictionary
+            config (dict): Configuration dictionary containing character settings
             debug (bool): Enable debug output (default: False)
         """
         self.debug = debug
