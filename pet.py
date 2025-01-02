@@ -62,24 +62,35 @@ class TalkingPet:
             'enable_vision': bool,
             'silence_count_threshold': int,
             'model': str,
-            'character_closed_mouth': str,
-            'character_open_mouth': str
         }
 
-        # Validate and set all settings
+        # Optional settings with their types
+        optional_settings = {
+            'character_closed_mouth': str,
+            'character_open_mouth': str,
+        }
+
+        # Validate and set required settings
         for key, expected_type in required_settings.items():
             if key not in config:
                 raise ValueError(f"Missing required setting: {key}")
             
             try:
-                # Special handling for boolean values which might be strings
-                if expected_type == bool and isinstance(config[key], str):
-                    value = config[key].lower() in ('true', '1', 'yes', 'on')
-                else:
-                    value = expected_type(config[key])
+                value = expected_type(config[key])
                 setattr(self, key, value)
             except (ValueError, TypeError):
                 raise TypeError(f"Cannot convert {key} value '{config[key]}' to {expected_type}")
+
+        # Set optional settings
+        for key, expected_type in optional_settings.items():
+            if key in config:
+                setattr(self, key, config[key])
+            else:
+                setattr(self, key, None)
+
+        # Initialize display mode based on character images
+        self.enable_display = (self.character_closed_mouth is not None and 
+                             self.character_open_mouth is not None)
 
         # Convert dtype string to numpy dtype
         self.dtype = np.dtype(self.dtype)
@@ -97,15 +108,22 @@ class TalkingPet:
         # Initialize ElevenLabs client
         self.eleven_client = ElevenLabs(api_key=os.environ.get("ELEVEN_API_KEY"))
 
-        # Initialize pygame
-        pygame.mixer.init()
-        pygame.init()
-        self.screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
-        pygame.display.set_caption("Talking Pet")
+        # Initialize pygame and display only if character images are provided
+        if self.enable_display:
+            self._debug_print("Initializing display with character images")
+            pygame.mixer.init()
+            pygame.init()
+            self.screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
+            pygame.display.set_caption("Talking Pet")
 
-        # Load character images
-        self.skull_closed = pygame.image.load(self.character_closed_mouth)
-        self.skull_open = pygame.image.load(self.character_open_mouth)
+            # Load character images
+            self.skull_closed = pygame.image.load(self.character_closed_mouth)
+            self.skull_open = pygame.image.load(self.character_open_mouth)
+            self.pygame_initialized = True
+        else:
+            self._debug_print("No character images provided, running without display")
+            pygame.mixer.init()  # Still need mixer for audio
+            self.pygame_initialized = False
 
         # Calculate and set silence threshold
         self.ambient_noise_level = self._calculate_ambient_noise_level()
@@ -254,8 +272,15 @@ class TalkingPet:
             with open(output_filename, "wb") as f:
                 f.write(audio_buffer.getvalue())
 
-            # Display animation and play audio
-            self._display_talking_animation(output_filename)
+            # Display animation and play audio if display is enabled
+            if self.enable_display:
+                self._display_talking_animation(output_filename)
+            else:
+                # Just play the audio without animation
+                pygame.mixer.music.load(output_filename)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy():
+                    pygame.time.wait(100)
             
             # Update conversation history
             self.messages.append({"role": "assistant", "content": text})

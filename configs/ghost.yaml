@@ -27,5 +27,3 @@ lonely_sounds:
   - "assets/lonely3.mp3"
 enable_vision: true
 model: "gpt-4o-mini"
-character_closed_mouth: "assets/skeleton_closed.webp"
-character_open_mouth: "assets/skeleton_open.webp"
