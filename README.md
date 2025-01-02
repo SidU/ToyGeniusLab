@@ -52,15 +52,21 @@ export OPENAI_API_KEY="your-api-key-here"
 export ELEVEN_API_KEY="your-eleven-api-key-here"
 ```
 
-### Running a Character
+### Running an AI Character Agent
 
-The easiest way to get started is using the example application:
+The easiest way to get started is using our example agent implementation:
 
 ```bash
 python example_usage.py --config configs/ghost.yaml
 ```
 
-Try other configurations in the `configs/` directory or create your own!
+This creates an interactive agent that:
+- Manages the character's lifecycle
+- Handles continuous listening and response cycles
+- Provides visual feedback during interactions
+- Manages conversation state
+
+Try different character configurations from the `configs/` directory or create your own!
 
 ### Audio Setup and Debugging
 
@@ -135,9 +141,30 @@ Overview of how the toy works.
 
 ![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/464578fe-9fb2-4f1e-9917-70838e1b8a85)
 
+## Architecture
+
+The project consists of two main components:
+
+1. **AICharacter (ai_character.py)**
+   - Core character capabilities (speech, vision, thinking)
+   - Audio processing and silence detection
+   - Visual animation (optional)
+   - LLM integration (GPT-4, Groq, Ollama)
+   - Text-to-speech via ElevenLabs
+
+2. **Character Agent (example_usage.py)**
+   - Creates and manages AICharacter instances
+   - Implements the interaction loop
+   - Handles user feedback
+   - Manages conversation flow
+   - Provides progress indicators
+
+Here's how they work together:
+![image](https://github.com/SidU/ToyGeniusLab/assets/4107912/464578fe-9fb2-4f1e-9917-70838e1b8a85)
+
 ## Using AICharacter in Your Projects
 
-Want to create your own AI character application? The `AICharacter` class provides a simple way to create interactive AI-powered characters. Here's a basic example:
+You can create your own agent implementation using the `AICharacter` class. Here's a basic example:
 
 ```python
 from ai_character import AICharacter
