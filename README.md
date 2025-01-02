@@ -169,7 +169,7 @@ You can create your own agent implementation using the `AICharacter` class. Here
 ```python
 from ai_character import AICharacter
 
-class CharacterApplication:
+class AICharacterAgent:
     def __init__(self, config_path):
         # Initialize character with configuration
         self.character = AICharacter(config=self.load_config(config_path))
