@@ -19,6 +19,7 @@ from scipy.io import wavfile
 import time
 import queue
 from audio_processor import AudioProcessor
+from model_handlers import ModelHandler
 
 class AICharacterState:
     IDLE = "idle"
@@ -144,13 +145,8 @@ class AICharacter:
         # Convert dtype string to numpy dtype
         self.dtype = np.dtype(self.dtype)
 
-        # Initialize AI client based on model
-        if self.model.startswith("gpt"):
-            self.client = OpenAI()
-        elif self.model.startswith("groq"):
-            self.client = Groq()
-        else:
-            self.client = ollama.Client()
+        # Replace the client initialization with model handler
+        self.model_handler = ModelHandler.create(self.model)
 
     def initialize_components(self):
         """Initialize necessary components like pygame, audio, etc."""
@@ -224,12 +220,10 @@ class AICharacter:
             audio_segment = self.audio_processor.create_audio_segment(audio_data)
             audio_segment.export(f.name, format="mp3")
             
+            # Use model handler for transcription instead of direct OpenAI client
             audio_file = open(f.name, "rb")
-            transcript = self.client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-            )
-            return transcript.text
+            transcript = self.model_handler.transcribe_audio(audio_file)
+            return transcript
 
     def speak(self, text, callback=None):
         """Generate and play audio for the given text asynchronously."""
@@ -322,25 +316,8 @@ class AICharacter:
             
             self.messages.append(user_message)
             
-            # Get AI response based on model type
-            if self.model.startswith("gpt"):
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=self.messages,
-                    temperature=1,
-                )
-                reply = response.choices[0].message.content
-            elif self.model.startswith("groq"):
-                model_name = self.model[5:]  # Remove "groq-" prefix
-                response = self.client.chat.completions.create(
-                    model=model_name,
-                    messages=self.messages,
-                    temperature=1,
-                )
-                reply = response.choices[0].message.content
-            else:
-                response = ollama.chat(model=self.model, messages=self.messages)
-                reply = response['message']['content']
+            # Get AI response using model handler
+            reply = self.model_handler.get_response(self.messages)
                 
             # Check if we should ignore the response
             if reply.lower() == "ignore":
