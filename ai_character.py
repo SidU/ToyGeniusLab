@@ -235,31 +235,40 @@ class AICharacter:
         total_frames = 0
 
         def audio_callback(indata, frames, time, status):
-            nonlocal silence_count, stop_recording, first_sound_detected, total_frames
-            
-            # Compute the mean amplitude of the audio chunk
-            chunk_mean = np.abs(indata).mean()
-            self._debug_print(f"Chunk mean: {chunk_mean}")  # Debug line
-            
-            if chunk_mean > self.silence_threshold:
-                self._debug_print("Sound detected, adding to audio queue.")
-                audio_queue.put(indata.copy())
-                total_frames += frames
-                silence_count = 0
-                first_sound_detected = True
-            elif first_sound_detected:
-                silence_count += 1
-            
-            # Print silence count
-            self._debug_print(f"Silence count: {silence_count}")
+            try:
 
-            # Stop recording after silence, but ensure minimum duration
-            current_duration = total_frames / self.sampling_rate
-            if (current_duration >= 0.25 and 
-                silence_count >= self.silence_count_threshold and 
-                first_sound_detected):
+                if status:
+                    self._debug_print(f"PortAudio Status: {status}")
+
+                nonlocal silence_count, stop_recording, first_sound_detected, total_frames
+                
+                # Compute the mean amplitude of the audio chunk
+                chunk_mean = np.abs(indata).mean()
+                self._debug_print(f"Chunk mean: {chunk_mean}, threshold: {self.silence_threshold}")  # Debug line
+                
+                if chunk_mean > self.silence_threshold:
+                    self._debug_print("Sound detected, adding to audio queue.")
+                    audio_queue.put(indata.copy())
+                    total_frames += frames
+                    silence_count = 0
+                    first_sound_detected = True
+                elif first_sound_detected:
+                    silence_count += 1
+                
+                # Print silence count
+                self._debug_print(f"Silence count: {silence_count}")
+
+                # Stop recording after silence, but ensure minimum duration
+                current_duration = total_frames / self.sampling_rate
+                if (current_duration >= 0.25 and 
+                    silence_count >= self.silence_count_threshold and 
+                    first_sound_detected):
+                    stop_recording = True
+                    self._debug_print(f"Silence detected, stopping recording. Duration: {current_duration:.2f} seconds")
+            
+            except Exception as e:
+                self._debug_print(f"Error in audio callback: {e}")
                 stop_recording = True
-                self._debug_print("Silence detected, stopping recording.")
 
         try:
             # Print available devices
@@ -268,15 +277,18 @@ class AICharacter:
             
             self._debug_print("Listening for audio...")
             with sd.InputStream(
+                device=0,
                 callback=audio_callback,
                 samplerate=self.sampling_rate,
+                blocksize=1024,  # Fix for stream being stopped mid-speaking
+                latency='high',
                 channels=self.num_channels,
                 dtype=self.dtype
             ):
                 while not stop_recording:
                     sd.sleep(250)
 
-            self._debug_print("Recording stopped.")
+            self._debug_print(f"Recording stopped.")
 
             # Process audio queue
             self._debug_print("Processing audio data...")
@@ -293,6 +305,10 @@ class AICharacter:
             self._debug_print(f"Sampling rate: {self.sampling_rate}")
             self._debug_print(f"Channels: {self.num_channels}")
             self._debug_print(f"Dtype: {self.dtype}")
+            return None
+
+        except Exception as e:
+            self._debug_print(f"Context manager error: {e}")
             return None
 
     def _transcribe_audio(self, audio_data):

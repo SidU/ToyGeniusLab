@@ -2,9 +2,9 @@ duration: 1
 sampling_rate: 16000
 num_channels: 1
 dtype: "int16"
-silence_threshold: 50
+silence_threshold: 10
 silence_count_threshold: 10
-ambient_noise_level_threshold_multiplier: 1
+ambient_noise_level_threshold_multiplier: 3.0
 max_file_size_bytes: 26214400
 enable_lonely_sounds: false
 enable_squeak: false

@@ -79,6 +79,9 @@ class AICharacterAgent:
                     
                     if response:
                         self.character.speak(response)
+                        # Wait for speaking to complete before listening again
+                        while self.character.is_speaking:
+                            time.sleep(0.1)
                 
                 time.sleep(0.1)  # Small delay to prevent CPU overuse
                 
