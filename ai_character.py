@@ -19,6 +19,38 @@ from scipy.io import wavfile
 import time
 import queue
 
+class AICharacterState:
+    IDLE = "idle"
+    LISTENING = "listening"
+    THINKING = "thinking"
+    SPEAKING = "speaking"
+    ERROR = "error"
+
+class RateLimiter:
+    def __init__(self, max_requests, time_window):
+        self.max_requests = max_requests
+        self.time_window = time_window
+        self.requests = []
+    
+    def can_proceed(self):
+        now = time.time()
+        # Remove old requests
+        self.requests = [req for req in self.requests 
+                        if now - req < self.time_window]
+        
+        if len(self.requests) < self.max_requests:
+            self.requests.append(now)
+            return True
+        return False
+
+class AICharacterMetrics:
+    def __init__(self):
+        self.total_interactions = 0
+        self.successful_interactions = 0
+        self.failed_interactions = 0
+        self.average_response_time = 0
+        self.start_time = time.time()
+
 class AICharacter:
     def __init__(self, config, debug=False):
         """Initialize an AI character with configuration dictionary.
@@ -37,6 +69,17 @@ class AICharacter:
         ]
         self.pygame_initialized = True
         self.talking = False
+        self.audio_queue = queue.Queue()
+        self.audio_thread = None
+        self.volume = 1.0  # Default volume
+        self.state = AICharacterState.IDLE
+        self.state_callbacks = []
+        self.rate_limiter = RateLimiter(max_requests=20, time_window=60)  # 20 requests per minute
+        self.metrics = AICharacterMetrics()
+
+        # Create temp directory for audio files
+        self.temp_dir = os.path.join(os.getcwd(), "temp_audio")
+        os.makedirs(self.temp_dir, exist_ok=True)
 
     def _debug_print(self, *args, **kwargs):
         """Print debug information if debug mode is enabled."""
@@ -62,10 +105,11 @@ class AICharacter:
             'model': str,
         }
 
-        # Optional settings with their types
+        # Optional settings with their types and defaults
         optional_settings = {
-            'character_closed_mouth': str,
-            'character_open_mouth': str,
+            'character_closed_mouth': (str, None),
+            'character_open_mouth': (str, None),
+            'max_message_history': (int, 20),  # Added with default value of 20
         }
 
         # Validate and set required settings
@@ -79,12 +123,17 @@ class AICharacter:
             except (ValueError, TypeError):
                 raise TypeError(f"Cannot convert {key} value '{config[key]}' to {expected_type}")
 
-        # Set optional settings
-        for key, expected_type in optional_settings.items():
+        # Set optional settings with defaults
+        for key, (expected_type, default_value) in optional_settings.items():
             if key in config:
-                setattr(self, key, config[key])
+                try:
+                    value = expected_type(config[key])
+                    setattr(self, key, value)
+                except (ValueError, TypeError):
+                    print(f"Warning: Invalid value for {key}, using default: {default_value}")
+                    setattr(self, key, default_value)
             else:
-                setattr(self, key, None)
+                setattr(self, key, default_value)
 
         # Initialize display mode based on character images
         self.enable_display = (self.character_closed_mouth is not None and 
@@ -103,36 +152,51 @@ class AICharacter:
 
     def initialize_components(self):
         """Initialize necessary components like pygame, audio, etc."""
-        # Initialize ElevenLabs client
-        self.eleven_client = ElevenLabs(api_key=os.environ.get("ELEVEN_API_KEY"))
+        try:
+            # Initialize ElevenLabs client
+            self.eleven_client = ElevenLabs(api_key=os.environ.get("ELEVEN_API_KEY"))
+            if not os.environ.get("ELEVEN_API_KEY"):
+                raise ValueError("ELEVEN_API_KEY environment variable not set")
 
-        # Initialize pygame and display only if character images are provided
-        if self.enable_display:
-            self._debug_print("Initializing display with character images")
-            pygame.mixer.init()
-            pygame.init()
-            self.screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
-            pygame.display.set_caption("Talking Pet")
+            # Initialize pygame mixer
+            try:
+                pygame.mixer.init()
+            except pygame.error as e:
+                print(f"Warning: Could not initialize pygame mixer: {e}")
+                self.pygame_initialized = False
+                return
 
-            # Load character images
-            self.skull_closed = pygame.image.load(self.character_closed_mouth)
-            self.skull_open = pygame.image.load(self.character_open_mouth)
-            self.pygame_initialized = True
-        else:
-            self._debug_print("No character images provided, running without display")
-            pygame.mixer.init()  # Still need mixer for audio
+            # Initialize pygame and display only if character images are provided
+            if self.enable_display:
+                self._debug_print("Initializing display with character images")
+                pygame.mixer.init()
+                pygame.init()
+                self.screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
+                pygame.display.set_caption("Talking Pet")
+
+                # Load character images
+                self.skull_closed = pygame.image.load(self.character_closed_mouth)
+                self.skull_open = pygame.image.load(self.character_open_mouth)
+                self.pygame_initialized = True
+            else:
+                self._debug_print("No character images provided, running without display")
+                pygame.mixer.init()  # Still need mixer for audio
+                self.pygame_initialized = False
+
+            # Calculate and set silence threshold
+            self.ambient_noise_level = self._calculate_ambient_noise_level()
+            self.silence_threshold = max(
+                self.ambient_noise_level * self.ambient_noise_level_threshold_multiplier,
+                10.0
+            )
+
+            # Initialize sound effects if enabled
+            if self.enable_squeak:
+                pygame.mixer.music.load("filler.mp3")
+
+        except Exception as e:
+            print(f"Error initializing components: {e}")
             self.pygame_initialized = False
-
-        # Calculate and set silence threshold
-        self.ambient_noise_level = self._calculate_ambient_noise_level()
-        self.silence_threshold = max(
-            self.ambient_noise_level * self.ambient_noise_level_threshold_multiplier,
-            10.0
-        )
-
-        # Initialize sound effects if enabled
-        if self.enable_squeak:
-            pygame.mixer.music.load("filler.mp3")
 
     def add_speaking_callback(self, callback):
         """Add a callback function that will be called when the pet starts/stops speaking."""
@@ -152,12 +216,15 @@ class AICharacter:
 
     def listen(self):
         """Listen for user input and return the transcribed text."""
-        print("Listening...")
-        audio_data = self._listen_until_silence()
-        if audio_data is None or len(audio_data) == 0:
-            return None
-        
-        return self._transcribe_audio(audio_data)
+        self.set_state(AICharacterState.LISTENING)
+        try:
+            audio_data = self._listen_until_silence()
+            if audio_data is None or len(audio_data) == 0:
+                return None
+            
+            return self._transcribe_audio(audio_data)
+        finally:
+            self.set_state(AICharacterState.IDLE)
 
     def _listen_until_silence(self):
         """Record audio until silence is detected."""
@@ -247,57 +314,76 @@ class AICharacter:
             return transcript.text
 
     def speak(self, text, callback=None):
-        """Generate and play audio for the given text."""
-        self._notify_speaking_state(True)
-        
-        try:
-            # Generate audio stream
-            audio_stream = self.eleven_client.generate(
-                voice=self.voice_id,
-                text=text,
-                model="eleven_turbo_v2",
-                stream=True
-            )
-
-            # Save audio to buffer
-            audio_buffer = BytesIO()
-            for chunk in audio_stream:
-                if chunk:
-                    audio_buffer.write(chunk)
-
-            audio_buffer.seek(0)
-            output_filename = "pet_response.mp3"
-            with open(output_filename, "wb") as f:
-                f.write(audio_buffer.getvalue())
-
-            # Display animation and play audio if display is enabled
-            if self.enable_display:
-                self._display_talking_animation(output_filename)
-            else:
-                # Just play the audio without animation
-                pygame.mixer.music.load(output_filename)
-                pygame.mixer.music.play()
-                while pygame.mixer.music.get_busy():
-                    pygame.time.wait(100)
-            
-            # Update conversation history
-            self.messages.append({"role": "assistant", "content": text})
-            if len(self.messages) > 12:
-                self.messages = [self.messages[0]] + self.messages[-10:]
+        """Generate and play audio for the given text asynchronously."""
+        def audio_worker():
+            self.set_state(AICharacterState.SPEAKING)
+            try:
+                self._notify_speaking_state(True)
+                # Create unique filename in temp directory
+                output_filename = os.path.join(self.temp_dir, f"pet_response_{int(time.time())}.mp3")
                 
-        finally:
-            self._notify_speaking_state(False)
-            if callback:
-                callback()
+                try:
+                    # Generate audio stream
+                    audio_stream = self.eleven_client.generate(
+                        voice=self.voice_id,
+                        text=text,
+                        model="eleven_turbo_v2",
+                        stream=True
+                    )
+
+                    # Save audio to buffer
+                    audio_buffer = BytesIO()
+                    for chunk in audio_stream:
+                        if chunk:
+                            audio_buffer.write(chunk)
+
+                    audio_buffer.seek(0)
+                    with open(output_filename, "wb") as f:
+                        f.write(audio_buffer.getvalue())
+
+                    # Display animation and play audio if display is enabled
+                    if self.enable_display:
+                        self._display_talking_animation(output_filename)
+                    else:
+                        pygame.mixer.music.load(output_filename)
+                        pygame.mixer.music.play()
+                        while pygame.mixer.music.get_busy():
+                            pygame.time.wait(100)
+                    
+                    # Update conversation history
+                    self.messages.append({"role": "assistant", "content": text})
+                    if len(self.messages) > self.max_message_history:
+                        self.messages = [self.messages[0]] + self.messages[-(self.max_message_history-1):]
+                        
+                finally:
+                    self._notify_speaking_state(False)
+                    if callback:
+                        callback()
+                    # Clean up the temporary file
+                    if os.path.exists(output_filename):
+                        os.remove(output_filename)
+
+            finally:
+                self.set_state(AICharacterState.IDLE)
+                self._notify_speaking_state(False)
+                if callback:
+                    callback()
+                # Clean up the temporary file
+                if os.path.exists(output_filename):
+                    os.remove(output_filename)
+
+        self.audio_thread = threading.Thread(target=audio_worker)
+        self.audio_thread.start()
 
     def think_response(self, user_input):
-        """Process user input and generate a response."""
+        """Process user input and generate a response with rate limiting."""
+        if not self.rate_limiter.can_proceed():
+            return "I need a moment to process. Please try again shortly."
+        
         if user_input is None:
             return None
             
-        # Set talking flag
-        self.talking = True
-        
+        self.set_state(AICharacterState.THINKING)
         try:
             base64_image = self._capture_image() if self.enable_vision else None
             
@@ -346,19 +432,55 @@ class AICharacter:
                 self.messages = self.messages[:-1]
                 return None
                 
+            # Update message history with size limit
+            if len(self.messages) > self.max_message_history:
+                self.messages = [self.messages[0]] + self.messages[-(self.max_message_history-1):]
+                
             return reply
             
         finally:
-            self.talking = False
+            self.set_state(AICharacterState.IDLE)
 
     def get_speaking_state(self):
         """Return whether the pet is currently speaking or processing speech."""
         return self.talking or self.is_speaking
 
     def cleanup(self):
-        """Clean up resources."""
-        pygame.quit()
-        self.pygame_initialized = False
+        """Clean up resources and ensure graceful shutdown."""
+        try:
+            # Stop any ongoing audio
+            if self.pygame_initialized:
+                pygame.mixer.music.stop()
+                pygame.mixer.quit()
+                pygame.quit()
+            
+            # Wait for audio thread to complete
+            if self.audio_thread and self.audio_thread.is_alive():
+                self.audio_thread.join(timeout=1.0)
+            
+            # Clear message history
+            self.messages.clear()
+            
+            # Reset state
+            self.state = AICharacterState.IDLE
+            self.pygame_initialized = False
+            
+            # Clean up temp directory
+            if os.path.exists(self.temp_dir):
+                for file in os.listdir(self.temp_dir):
+                    file_path = os.path.join(self.temp_dir, file)
+                    try:
+                        if os.path.isfile(file_path):
+                            os.remove(file_path)
+                    except Exception as e:
+                        print(f"Error removing file {file_path}: {e}")
+                try:
+                    os.rmdir(self.temp_dir)
+                except Exception as e:
+                    print(f"Error removing temp directory: {e}")
+                
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
 
     def _calculate_ambient_noise_level(self):
         """Calculate the ambient noise level by sampling the environment."""
@@ -382,28 +504,31 @@ class AICharacter:
 
     def _capture_image(self):
         """Capture an image from the webcam and return it as base64 string."""
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("Cannot open camera")
+        try:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("Cannot open camera")
+                return None
+
+            ret, frame = cap.read()
+            cap.release()  # Important: manually release the capture
+
+            if not ret:
+                print("Can't receive frame (stream end?). Exiting ...")
+                return None
+            
+            # Save the frame as an image file (optional, for debugging)
+            cv2.imwrite('view.jpeg', frame)
+
+            retval, buffer = cv2.imencode('.jpg', frame)
+            if not retval:
+                print("Failed to encode image.")
+                return None
+
+            return base64.b64encode(buffer).decode('utf-8')
+        except Exception as e:
+            print(f"Error capturing image: {e}")
             return None
-
-        ret, frame = cap.read()
-        cap.release()
-
-        if not ret:
-            print("Can't receive frame (stream end?). Exiting ...")
-            return None
-        
-        # Save the frame as an image file (optional, for debugging)
-        cv2.imwrite('view.jpeg', frame)
-
-        retval, buffer = cv2.imencode('.jpg', frame)
-        if not retval:
-            print("Failed to encode image.")
-            return None
-
-        jpg_as_text = base64.b64encode(buffer).decode('utf-8')
-        return jpg_as_text
 
     def _display_talking_animation(self, audio_file):
         """Display talking animation while playing audio."""
@@ -462,3 +587,40 @@ class AICharacter:
         scaled_closed = pygame.transform.scale(self.skull_closed, (new_width, new_height))
         self.screen.blit(scaled_closed, (x, y))
         pygame.display.flip()
+
+    def set_volume(self, volume):
+        """Set the volume level (0.0 to 1.0)."""
+        self.volume = max(0.0, min(1.0, volume))
+        if self.pygame_initialized:
+            pygame.mixer.music.set_volume(self.volume)
+
+    def set_state(self, new_state):
+        """Update the character's state and notify callbacks."""
+        self.state = new_state
+        for callback in self.state_callbacks:
+            try:
+                callback(new_state)
+            except Exception as e:
+                self._debug_print(f"Error in state callback: {e}")
+
+    def _safe_retry(self, func, max_retries=3, delay=1):
+        """Safely retry a function with exponential backoff."""
+        for attempt in range(max_retries):
+            try:
+                return func()
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise
+                self._debug_print(f"Attempt {attempt + 1} failed: {e}")
+                time.sleep(delay * (2 ** attempt))
+
+    def get_metrics(self):
+        """Return current metrics."""
+        uptime = time.time() - self.metrics.start_time
+        return {
+            "uptime": uptime,
+            "total_interactions": self.metrics.total_interactions,
+            "success_rate": (self.metrics.successful_interactions / 
+                            max(1, self.metrics.total_interactions)),
+            "average_response_time": self.metrics.average_response_time
+        }
