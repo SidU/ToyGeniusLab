@@ -57,6 +57,11 @@ class AICharacterAgent:
         """Display a visual indicator while character is thinking."""
         print("\nThinking...", end='', flush=True)
 
+    def wait_for_speaking_to_complete(self):
+        """Wait until the character has finished speaking."""
+        while self.character.is_speaking:
+            time.sleep(0.1)
+
     def run(self):
         """Run the main interaction loop.
         
@@ -67,6 +72,10 @@ class AICharacterAgent:
         4. Provide feedback throughout
         """
         try:
+            # Say greeting before first listen
+            self.character.say_greeting()
+            self.wait_for_speaking_to_complete()
+
             while self.running:
                 # Listen for user input
                 self.show_listening_indicator()
@@ -79,9 +88,7 @@ class AICharacterAgent:
                     
                     if response:
                         self.character.speak(response)
-                        # Wait for speaking to complete before listening again
-                        while self.character.is_speaking:
-                            time.sleep(0.1)
+                        self.wait_for_speaking_to_complete()
                 
                 time.sleep(0.1)  # Small delay to prevent CPU overuse
                 

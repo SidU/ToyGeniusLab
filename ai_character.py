@@ -520,3 +520,9 @@ class AICharacter:
                             max(1, self.metrics.total_interactions)),
             "average_response_time": self.metrics.average_response_time
         }
+
+    def say_greeting(self):
+        """Say a random greeting from the configured list."""
+        if self.greetings:
+            greeting = random.choice(self.greetings)
+            self.speak(greeting)
