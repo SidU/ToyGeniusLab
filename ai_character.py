@@ -18,6 +18,7 @@ from io import BytesIO
 from scipy.io import wavfile
 import time
 import queue
+from audio_processor import AudioProcessor
 
 class AICharacterState:
     IDLE = "idle"
@@ -76,6 +77,7 @@ class AICharacter:
         self.state_callbacks = []
         self.rate_limiter = RateLimiter(max_requests=20, time_window=60)  # 20 requests per minute
         self.metrics = AICharacterMetrics()
+        self.audio_processor = AudioProcessor(config, debug=debug)
 
         # Create temp directory for audio files
         self.temp_dir = os.path.join(os.getcwd(), "temp_audio")
@@ -158,18 +160,9 @@ class AICharacter:
             if not os.environ.get("ELEVEN_API_KEY"):
                 raise ValueError("ELEVEN_API_KEY environment variable not set")
 
-            # Initialize pygame mixer
-            try:
-                pygame.mixer.init()
-            except pygame.error as e:
-                print(f"Warning: Could not initialize pygame mixer: {e}")
-                self.pygame_initialized = False
-                return
-
             # Initialize pygame and display only if character images are provided
             if self.enable_display:
                 self._debug_print("Initializing display with character images")
-                pygame.mixer.init()
                 pygame.init()
                 self.screen = pygame.display.set_mode((800, 600), pygame.RESIZABLE)
                 pygame.display.set_caption("Talking Pet")
@@ -180,15 +173,7 @@ class AICharacter:
                 self.pygame_initialized = True
             else:
                 self._debug_print("No character images provided, running without display")
-                pygame.mixer.init()  # Still need mixer for audio
                 self.pygame_initialized = False
-
-            # Calculate and set silence threshold
-            self.ambient_noise_level = self._calculate_ambient_noise_level()
-            self.silence_threshold = max(
-                self.ambient_noise_level * self.ambient_noise_level_threshold_multiplier,
-                10.0
-            )
 
             # Initialize sound effects if enabled
             if self.enable_squeak:
@@ -228,98 +213,15 @@ class AICharacter:
 
     def _listen_until_silence(self):
         """Record audio until silence is detected."""
-        audio_queue = Queue()
-        silence_count = 0
-        stop_recording = False
-        first_sound_detected = False
-        total_frames = 0
-
-        def audio_callback(indata, frames, time, status):
-            try:
-
-                if status:
-                    self._debug_print(f"PortAudio Status: {status}")
-
-                nonlocal silence_count, stop_recording, first_sound_detected, total_frames
-                
-                # Compute the mean amplitude of the audio chunk
-                chunk_mean = np.abs(indata).mean()
-                self._debug_print(f"Chunk mean: {chunk_mean}, threshold: {self.silence_threshold}")  # Debug line
-                
-                if chunk_mean > self.silence_threshold:
-                    self._debug_print("Sound detected, adding to audio queue.")
-                    audio_queue.put(indata.copy())
-                    total_frames += frames
-                    silence_count = 0
-                    first_sound_detected = True
-                elif first_sound_detected:
-                    silence_count += 1
-                
-                # Print silence count
-                self._debug_print(f"Silence count: {silence_count}")
-
-                # Stop recording after silence, but ensure minimum duration
-                current_duration = total_frames / self.sampling_rate
-                if (current_duration >= 0.25 and 
-                    silence_count >= self.silence_count_threshold and 
-                    first_sound_detected):
-                    stop_recording = True
-                    self._debug_print(f"Silence detected, stopping recording. Duration: {current_duration:.2f} seconds")
-            
-            except Exception as e:
-                self._debug_print(f"Error in audio callback: {e}")
-                stop_recording = True
-
-        try:
-            # Print available devices
-            self._debug_print("Available devices:")
-            self._debug_print(sd.query_devices())
-            
-            self._debug_print("Listening for audio...")
-            with sd.InputStream(
-                device=0,
-                callback=audio_callback,
-                samplerate=self.sampling_rate,
-                blocksize=1024,  # Fix for stream being stopped mid-speaking
-                latency='high',
-                channels=self.num_channels,
-                dtype=self.dtype
-            ):
-                while not stop_recording:
-                    sd.sleep(250)
-
-            self._debug_print(f"Recording stopped.")
-
-            # Process audio queue
-            self._debug_print("Processing audio data...")
-            audio_data = np.empty((0, self.num_channels), dtype=self.dtype)
-            while not audio_queue.empty():
-                indata = audio_queue.get()
-                audio_data = np.concatenate((audio_data, indata), axis=0)
-
-            return audio_data
-
-        except sd.PortAudioError as e:
-            self._debug_print(f"PortAudio error: {e}")
-            self._debug_print(f"Current audio settings:")
-            self._debug_print(f"Sampling rate: {self.sampling_rate}")
-            self._debug_print(f"Channels: {self.num_channels}")
-            self._debug_print(f"Dtype: {self.dtype}")
-            return None
-
-        except Exception as e:
-            self._debug_print(f"Context manager error: {e}")
-            return None
+        return self.audio_processor.listen_until_silence()
 
     def _transcribe_audio(self, audio_data):
         """Transcribe audio data to text."""
+        if audio_data is None:
+            return None
+            
         with tempfile.NamedTemporaryFile(suffix=".mp3") as f:
-            audio_segment = AudioSegment(
-                data=np.array(audio_data).tobytes(),
-                sample_width=self.dtype.itemsize,
-                frame_rate=self.sampling_rate,
-                channels=self.num_channels
-            )
+            audio_segment = self.audio_processor.create_audio_segment(audio_data)
             audio_segment.export(f.name, format="mp3")
             
             audio_file = open(f.name, "rb")
@@ -335,11 +237,9 @@ class AICharacter:
             self.set_state(AICharacterState.SPEAKING)
             try:
                 self._notify_speaking_state(True)
-                # Create unique filename in temp directory
                 output_filename = os.path.join(self.temp_dir, f"pet_response_{int(time.time())}.mp3")
                 
                 try:
-                    # Generate audio stream
                     audio_stream = self.eleven_client.generate(
                         voice=self.voice_id,
                         text=text,
@@ -497,26 +397,6 @@ class AICharacter:
                 
         except Exception as e:
             print(f"Error during cleanup: {e}")
-
-    def _calculate_ambient_noise_level(self):
-        """Calculate the ambient noise level by sampling the environment."""
-        self._debug_print("Calculating ambient noise level, please wait...")
-        ambient_noise_data = []
-        duration = 5  # seconds
-        
-        for _ in range(int(duration / duration)):
-            audio_chunk = sd.rec(
-                int(self.sampling_rate * duration), 
-                samplerate=self.sampling_rate, 
-                channels=self.num_channels, 
-                dtype=self.dtype
-            )
-            sd.wait()
-            ambient_noise_data.extend(audio_chunk)
-            
-        ambient_noise_level = np.abs(np.array(ambient_noise_data)).mean()
-        self._debug_print(f"Ambient noise level: {ambient_noise_level}")
-        return ambient_noise_level
 
     def _capture_image(self):
         """Capture an image from the webcam and return it as base64 string."""
